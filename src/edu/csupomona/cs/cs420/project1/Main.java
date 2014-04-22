@@ -1,9 +1,16 @@
 package edu.csupomona.cs.cs420.project1;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.Scanner;
 
 public class Main {
+	private static final int[] GOAL_STATE = {
+		0, 1, 2,
+		3, 4, 5,
+		6, 7, 8
+	};
+
 	private static Scanner SCAN;
 	private static Random RAND;
 
@@ -36,7 +43,7 @@ public class Main {
 
 		int temp;
 		int randomIndex;
-		int[] puzzle = Puzzle.copyGoalState();
+		int[] puzzle = copyGoalState();
 		for (int i = 0; i < puzzle.length; i++) {
 			randomIndex = RAND.nextInt(puzzle.length);
 			swap(puzzle, i, randomIndex);
@@ -73,5 +80,13 @@ public class Main {
 				System.out.format("%n");
 			}
 		}
+	}
+
+	private static int[] copyGoalState() {
+		return Arrays.copyOf(GOAL_STATE, GOAL_STATE.length);
+	}
+
+	private static boolean isGoalState(int[] puzzle) {
+		return Arrays.equals(GOAL_STATE, puzzle);
 	}
 }
