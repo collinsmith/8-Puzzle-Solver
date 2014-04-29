@@ -1,15 +1,23 @@
 package edu.csupomona.cs.cs420.project1;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 	private static final byte ACTION_NOOP	= 0;
@@ -79,7 +87,7 @@ public class Main {
 
 	private static boolean displayMenu() {
 		System.out.format("Select an option:%n");
-		System.out.format(" 1. generate a random 8-puzzle problem%n");
+		System.out.format(" 1. generate random 8-puzzle problems%n");
 		System.out.format(" 2. enter an 8-puzzle problem manually%n");
 		System.out.format(" 3. exit%n");
 		System.out.format("-> ");
@@ -97,14 +105,28 @@ public class Main {
 		System.out.format("How many random iterations do you want to generate? ");
 		int iterations = SCAN.nextInt();
 
-		byte[] puzzle;
-		for (int i = 0; i < iterations; i++) {
-			do {
-				puzzle = generateRandomPuzzle();
-			} while (!isSolvable(puzzle));
+		Path file = Paths.get(".", "output", "output.txt");
+		Charset charset = Charset.forName("US-ASCII");
+		try (BufferedWriter writer = Files.newBufferedWriter(file, charset, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+			System.out.format("%3s %16s %16s %16s %16s%n", "d", "A*(h1) nodes", "A*(h1) time", "A*(h2) nodes", "A*(h2) time");
+			writer.write(String.format("%s\t%s\t%s\t%s\t%s%n", "d", "A*(h1) nodes", "A*(h1) time", "A*(h2) nodes", "A*(h2) time"));
 
-			search(puzzle, h1);
-			search(puzzle, h2);
+			byte[] puzzle;
+			for (int i = 0; i < iterations; i++) {
+				do {
+					puzzle = generateRandomPuzzle();
+				} while (!isSolvable(puzzle));
+
+				Result r1 = search(puzzle, h1);
+				Result r2 = search(puzzle, h2);
+
+				assert r1.DEPTH == r2.DEPTH : "Path lengths are not equal!";
+				System.out.format("%3d %16s %16s %16s %16s%n", r1.DEPTH, r1.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME));
+				writer.write(String.format("%d\t%d\t%d\t%d\t%d%n", r1.DEPTH, r1.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME)));
+				writer.flush();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
 		return true;
@@ -134,13 +156,14 @@ public class Main {
 			System.out.format("This puzzle is not solvable.%n");
 		} else {
 			System.out.format("Puzzle accepted, solving...%n");
-			List<byte[]> p1 = search(puzzle, h1);
-			List<byte[]> p2 = search(puzzle, h2);
-			if (p1.size() != p2.size()) {
-				System.out.format("We have a big problem!%n");
-			}
 
-			System.out.format("The solution depth is %d%n", p1.size()-1);
+			Result r1 = search(puzzle, h1);
+			Result r2 = search(puzzle, h2);
+
+			assert r1.DEPTH == r2.DEPTH : "Path lengths are not equal!";
+			System.out.format("Solution depth = %d%n", r1.DEPTH);
+			System.out.format("Displaying path...%n");
+			printPath(r1.PATH);
 		}
 
 		return true;
@@ -219,57 +242,65 @@ public class Main {
 		return -1;
 	}
 
-	private static List<byte[]> search(byte[] puzzle, Heuristic h) {
-		Set<byte[]> explored = new HashSet<>();
-		Map<byte[], byte[]> map = new HashMap<>();
-		PriorityQueue<byte[]> frontier = new PriorityQueue<>((n1, n2) -> {
-			return h.evaluate(n1) - h.evaluate(n2);
+	private static Result search(byte[] puzzle, Heuristic h) {
+		Set<Node> explored = new HashSet<>();
+		PriorityQueue<Node> frontier = new PriorityQueue<>((n1, n2) -> {
+			return (n1.COST + h.evaluate(n1.PUZZLE)) - (n2.COST + h.evaluate(n2.PUZZLE));
 		});
 
-		int cost = 0;
+		Node n;
+		int successorCost;
 		int nodesGenerated = 0;
-		frontier.offer(puzzle);
+		boolean frontierContainsSuccessor;
+		frontier.offer(new Node(puzzle));
+		final long START_TIME = System.nanoTime();
 		while (!frontier.isEmpty()) {
-			System.out.println("new loop");
-			byte[] n = frontier.poll();
-			if (isGoal(n)) {
-				System.out.format("%d nodes generated.%n", nodesGenerated);
-				return buildPath(new LinkedList<>(), map, n);
+			n = frontier.poll();
+			if (isGoal(n.PUZZLE)) {
+				return new Result(
+					buildPath(new LinkedList<>(), n),
+					nodesGenerated,
+					START_TIME,
+					System.nanoTime()
+				);
 			}
 
-			explored.add(n);
-			System.out.println(explored.size());
-			Set<byte[]> sucessors = Node.generateSuccessors(n);
-			System.out.println("Successors = " + sucessors.size());
-			for (byte[] successor : sucessors) {
+			for (Node successor : n.generateSuccessors()) {
 				if (explored.contains(successor)) {
-					System.out.println("skipping puzzle");
 					continue;
 				}
 
 				nodesGenerated++;
-				map.put(successor, n);
-				//int g_score = cost + 1;
-				boolean frontierContainsSuccessor = frontier.contains(successor);
-				if (!frontierContainsSuccessor) {// || g_score < cost) {
-					//int f_score = g_score + h.evaluate(successor.PUZZLE);
-					//if (!frontierContainsSuccessor) {
-						frontier.add(successor);
-						System.out.println("adding to frontier");
-					//}
+				successorCost = n.COST + h.evaluate(successor.PUZZLE);
+				frontierContainsSuccessor = frontier.contains(successor);
+				if (!frontierContainsSuccessor || successorCost < successor.COST) {
+					successor.PARENT = n;
+					successor.COST = successorCost;
+					if (frontierContainsSuccessor) {
+						frontier.remove(successor);
+					}
+
+					frontier.offer(successor);
 				}
 			}
+
+			explored.add(n);
 		}
 
-		return new LinkedList<>();
+		return new Result(
+			Collections.EMPTY_LIST,
+			nodesGenerated,
+			START_TIME,
+			System.nanoTime()
+		);
 	}
 
-	private static List<byte[]> buildPath(List<byte[]> l, Map<byte[], byte[]> map, byte[] n) {
+	private static List<Node> buildPath(List<Node> l, Node n) {
 		if (n == null) {
 			return l;
 		} else {
 			l.add(0, n);
-			return buildPath(l, map, map.get(n));
+			return buildPath(l, n.PARENT);
 		}
 	}
 
@@ -279,55 +310,94 @@ public class Main {
 	}
 
 	private static class Node {
-		private final Node PARENT;
-		private final byte[] PUZZLE;
+		final byte[] PUZZLE;
+		final int BLANK_INDEX;
+
+		int COST;
+		Node PARENT;
 
 		Node(byte[] puzzle) {
-			this(null, puzzle);
+			this(puzzle, findBlankIndex(puzzle), null, 0);
 		}
 
-		Node(Node parent, byte[] puzzle) {
-			this.PARENT = parent;
+		Node(byte[] puzzle, int blankIndex, Node parent, int cost) {
 			this.PUZZLE = puzzle;
+			this.BLANK_INDEX = blankIndex;
+			this.PARENT = parent;
+			this.COST = cost;
 		}
 
-		static Set<byte[]> generateSuccessors(byte[] puzzle) {
-			int new_index_of_blank;
-			byte[] successorPuzzle;
-			Set<byte[]> successors = new HashSet<>();
-			int blank_index = findBlankIndex(puzzle);
-			int actions = AVAIL_ACTIONS[blank_index];
+		@Override
+		public int hashCode() {
+			return Objects.hash(Arrays.hashCode(PUZZLE));
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == this) {
+				return true;
+			}
+
+			if (!(obj instanceof Node)) {
+				return false;
+			}
+
+			Node n = (Node)obj;
+			return Arrays.equals(PUZZLE, n.PUZZLE);
+		}
+
+		Set<Node> generateSuccessors() {
+			int newBlankIndex;
+			byte[] successor;
+			Set<Node> successors = new HashSet<>();
+			int actions = AVAIL_ACTIONS[BLANK_INDEX];
 
 			if ((actions&ACTION_UP) != 0) {
-				new_index_of_blank = blank_index-3;
-				successorPuzzle = Arrays.copyOf(puzzle, puzzle.length);
-				swap(successorPuzzle, blank_index, new_index_of_blank);
-				successors.add(successorPuzzle);
+				newBlankIndex = BLANK_INDEX-3;
+				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
+				swap(successor, BLANK_INDEX, newBlankIndex);
+				successors.add(new Node(successor, newBlankIndex, this, COST));
 			}
 
 			if ((actions&ACTION_DOWN) != 0) {
-				new_index_of_blank = blank_index+3;
-				successorPuzzle = Arrays.copyOf(puzzle, puzzle.length);
-				swap(successorPuzzle, blank_index, new_index_of_blank);
-				successors.add(successorPuzzle);
+				newBlankIndex = BLANK_INDEX+3;
+				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
+				swap(successor, BLANK_INDEX, newBlankIndex);
+				successors.add(new Node(successor, newBlankIndex, this, COST));
 			}
 
 			if ((actions&ACTION_LEFT) != 0) {
-				new_index_of_blank = blank_index-1;
-				successorPuzzle = Arrays.copyOf(puzzle, puzzle.length);
-				swap(successorPuzzle, blank_index, new_index_of_blank);
-				successors.add(successorPuzzle);
+				newBlankIndex = BLANK_INDEX-1;
+				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
+				swap(successor, BLANK_INDEX, newBlankIndex);
+				successors.add(new Node(successor, newBlankIndex, this, COST));
 			}
 
 
 			if ((actions&ACTION_RIGHT) != 0) {
-				new_index_of_blank = blank_index+1;
-				successorPuzzle = Arrays.copyOf(puzzle, puzzle.length);
-				swap(successorPuzzle, blank_index, new_index_of_blank);
-				successors.add(successorPuzzle);
+				newBlankIndex = BLANK_INDEX+1;
+				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
+				swap(successor, BLANK_INDEX, newBlankIndex);
+				successors.add(new Node(successor, newBlankIndex, this, COST));
 			}
 
 			return successors;
+		}
+	}
+
+	private static class Result {
+		final List<Node> PATH;
+		final int DEPTH;
+		final int NODES_GENERATED;
+		final long START_TIME;
+		final long END_TIME;
+
+		Result(List<Node> path, int nodesGenerated, long startTime, long endTime) {
+			this.PATH = path;
+			this.DEPTH = path.size()-1;
+			this.NODES_GENERATED = nodesGenerated;
+			this.START_TIME = startTime;
+			this.END_TIME = endTime;
 		}
 	}
 }
