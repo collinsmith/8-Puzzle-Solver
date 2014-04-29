@@ -33,9 +33,7 @@ public class Main {
 	};
 
 	private static final byte[] GOAL_STATE = {
-		0, 1, 2,
-		3, 4, 5,
-		6, 7, 8
+		0, 1, 2, 3, 4, 5, 6, 7, 8
 	};
 
 	private static final byte[][] MANHATTAN_DIST = {
@@ -51,14 +49,18 @@ public class Main {
 	};
 
 	private static final Heuristic h1 = (puzzle) -> {
-		int numBlocksOutOfPlace = 0;
+		int misplacedTiles = 0;
 		for (int j = 0; j < puzzle.length; j++) {
+			if (puzzle[j] == 0) {
+				continue;
+			}
+
 			if (puzzle[j] != GOAL_STATE[j]) {
-				numBlocksOutOfPlace++;
+				misplacedTiles++;
 			}
 		}
 
-		return numBlocksOutOfPlace;
+		return misplacedTiles;
 	};
 
 	private static final Heuristic h2 = (puzzle) -> {
@@ -111,6 +113,8 @@ public class Main {
 			System.out.format("%3s %16s %16s %16s %16s%n", "d", "A*(h1) nodes", "A*(h1) time", "A*(h2) nodes", "A*(h2) time");
 			writer.write(String.format("%s\t%s\t%s\t%s\t%s%n", "d", "A*(h1) nodes", "A*(h1) time", "A*(h2) nodes", "A*(h2) time"));
 
+			int numDifferentDepths = 0;
+
 			byte[] puzzle;
 			for (int i = 0; i < iterations; i++) {
 				do {
@@ -121,6 +125,11 @@ public class Main {
 				Result r2 = search(puzzle, h2);
 
 				assert r1.DEPTH == r2.DEPTH : "Path lengths are not equal!";
+				if (r1.DEPTH != r2.DEPTH) {
+					numDifferentDepths++;
+					System.out.format("depths not equal (%d:%d)%n", r1.DEPTH, r2.DEPTH);
+				}
+				
 				System.out.format("%3d %16s %16s %16s %16s%n", r1.DEPTH, r1.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME));
 				writer.write(String.format("%d\t%d\t%d\t%d\t%d%n", r1.DEPTH, r1.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME)));
 				writer.flush();
