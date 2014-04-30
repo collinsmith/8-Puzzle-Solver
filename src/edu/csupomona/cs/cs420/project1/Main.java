@@ -110,8 +110,8 @@ public class Main {
 		Path file = Paths.get(".", "output", "output.txt");
 		Charset charset = Charset.forName("US-ASCII");
 		try (BufferedWriter writer = Files.newBufferedWriter(file, charset, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-			System.out.format("%3s %16s %16s %16s %16s%n", "d", "A*(h1) nodes", "A*(h1) time", "A*(h2) nodes", "A*(h2) time");
-			writer.write(String.format("%s\t%s\t%s\t%s\t%s%n", "d", "A*(h1) nodes", "A*(h1) time", "A*(h2) nodes", "A*(h2) time"));
+			System.out.format("%3s %16s %16s %16s %16s%n", "d", "h1 cost", "h1 time", "h2 cost", "h2 time");
+			writer.write(String.format("%s\t%s\t%s\t%s\t%s%n", "d", "h1 cost", "h1 time", "h2 cost", "h2 time"));
 
 			int numDifferentDepths = 0;
 
@@ -156,7 +156,7 @@ public class Main {
 	private static boolean enterPuzzleManually() {
 		System.out.format("You may begin entering your puzzle.%n");
 
-		byte[] puzzle = new byte[9];
+		byte[] puzzle = new byte[GOAL_STATE.length];
 		for (int i = 0; i < puzzle.length; i++) {
 			puzzle[i] = SCAN.nextByte();
 		}
@@ -321,24 +321,27 @@ public class Main {
 	private static class Node {
 		final byte[] PUZZLE;
 		final int BLANK_INDEX;
+		final int HASH;
 
 		int COST;
 		Node PARENT;
 
 		Node(byte[] puzzle) {
-			this(puzzle, findBlankIndex(puzzle), null, 0);
+			this(puzzle, findBlankIndex(puzzle), null, Integer.MAX_VALUE);
 		}
 
 		Node(byte[] puzzle, int blankIndex, Node parent, int cost) {
 			this.PUZZLE = puzzle;
 			this.BLANK_INDEX = blankIndex;
+			this.HASH = Arrays.hashCode(PUZZLE);
+			
 			this.PARENT = parent;
 			this.COST = cost;
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(Arrays.hashCode(PUZZLE));
+			return HASH;
 		}
 
 		@Override
