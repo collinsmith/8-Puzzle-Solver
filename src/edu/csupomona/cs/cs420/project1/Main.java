@@ -12,7 +12,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Scanner;
@@ -35,7 +34,7 @@ public class Main {
 	private static final byte[] GOAL_STATE = {
 		0, 1, 2, 3, 4, 5, 6, 7, 8
 	};
-	
+
 	private static final int GOAL_HASH = Arrays.hashCode(GOAL_STATE);
 
 	private static final byte[][] MANHATTAN_DIST = {
@@ -112,10 +111,8 @@ public class Main {
 		Path file = Paths.get(".", "output", "output.txt");
 		Charset charset = Charset.forName("US-ASCII");
 		try (BufferedWriter writer = Files.newBufferedWriter(file, charset, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-			System.out.format("%3s %16s %16s %16s %16s%n", "d", "h1 cost", "h1 time", "h2 cost", "h2 time");
-			writer.write(String.format("%s\t%s\t%s\t%s\t%s%n", "d", "h1 cost", "h1 time", "h2 cost", "h2 time"));
-
-			int numDifferentDepths = 0;
+			System.out.format("%-8s %-8s %-8s %-16s %-8s %-16s%n", "h1 d", "h2 d", "h1 cost", "h2 cost", "h1 time", "h2 time");
+			writer.write(String.format("%s\t%s\t%s\t%s\t%s\t%s%n", "h1 d", "h2 d", "h1 cost", "h2 cost", "h1 time", "h2 time"));
 
 			byte[] puzzle;
 			for (int i = 0; i < iterations; i++) {
@@ -126,14 +123,13 @@ public class Main {
 				Result r1 = search(puzzle, h1);
 				Result r2 = search(puzzle, h2);
 
-				assert r1.DEPTH == r2.DEPTH : "Path lengths are not equal!";
+				/*assert r1.DEPTH == r2.DEPTH : "Path lengths are not equal!";
 				if (r1.DEPTH != r2.DEPTH) {
-					numDifferentDepths++;
 					System.out.format("depths not equal (%d:%d)%n", r1.DEPTH, r2.DEPTH);
-				}
-				
-				System.out.format("%3d %16s %16s %16s %16s%n", r1.DEPTH, r1.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME));
-				writer.write(String.format("%d\t%d\t%d\t%d\t%d%n", r1.DEPTH, r1.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME)));
+				}*/
+
+				System.out.format("%-8d %-8d %-8s %-16s %-8s %-16s%n", r1.DEPTH, r2.DEPTH, r1.NODES_GENERATED, r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME));
+				writer.write(String.format("%d\t%d\t%d\t%d\t%d\t%d%n", r1.DEPTH, r2.DEPTH, r1.NODES_GENERATED, r2.NODES_GENERATED, TimeUnit.NANOSECONDS.toMillis(r1.END_TIME-r1.START_TIME), TimeUnit.NANOSECONDS.toMillis(r2.END_TIME-r2.START_TIME)));
 				writer.flush();
 			}
 		} catch (IOException e) {
@@ -256,7 +252,7 @@ public class Main {
 	private static Result search(byte[] puzzle, Heuristic h) {
 		Set<Node> explored = new HashSet<>();
 		PriorityQueue<Node> frontier = new PriorityQueue<>((n1, n2) -> {
-			return (n1.COST + h.evaluate(n1.PUZZLE)) - (n2.COST + h.evaluate(n2.PUZZLE));
+			return (n1.COST) - (n2.COST);
 		});
 
 		Node n;
@@ -336,7 +332,7 @@ public class Main {
 			this.PUZZLE = puzzle;
 			this.BLANK_INDEX = blankIndex;
 			this.HASH = Arrays.hashCode(PUZZLE);
-			
+
 			this.PARENT = parent;
 			this.COST = cost;
 		}
