@@ -35,6 +35,8 @@ public class Main {
 	private static final byte[] GOAL_STATE = {
 		0, 1, 2, 3, 4, 5, 6, 7, 8
 	};
+	
+	private static final int GOAL_HASH = Arrays.hashCode(GOAL_STATE);
 
 	private static final byte[][] MANHATTAN_DIST = {
 		{0, 1, 2, 1, 2, 3, 2, 3, 4}, // 0
@@ -265,7 +267,7 @@ public class Main {
 		final long START_TIME = System.nanoTime();
 		while (!frontier.isEmpty()) {
 			n = frontier.poll();
-			if (isGoal(n.PUZZLE)) {
+			if (n.hashCode() == GOAL_HASH && isGoal(n.PUZZLE)) {
 				return new Result(
 					buildPath(new LinkedList<>(), n),
 					nodesGenerated,
@@ -327,7 +329,7 @@ public class Main {
 		Node PARENT;
 
 		Node(byte[] puzzle) {
-			this(puzzle, findBlankIndex(puzzle), null, Integer.MAX_VALUE);
+			this(puzzle, findBlankIndex(puzzle), null, 0);
 		}
 
 		Node(byte[] puzzle, int blankIndex, Node parent, int cost) {
@@ -368,21 +370,21 @@ public class Main {
 				newBlankIndex = BLANK_INDEX-3;
 				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
 				swap(successor, BLANK_INDEX, newBlankIndex);
-				successors.add(new Node(successor, newBlankIndex, this, COST));
+				successors.add(new Node(successor, newBlankIndex, this, Integer.MAX_VALUE));
 			}
 
 			if ((actions&ACTION_DOWN) != 0) {
 				newBlankIndex = BLANK_INDEX+3;
 				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
 				swap(successor, BLANK_INDEX, newBlankIndex);
-				successors.add(new Node(successor, newBlankIndex, this, COST));
+				successors.add(new Node(successor, newBlankIndex, this, Integer.MAX_VALUE));
 			}
 
 			if ((actions&ACTION_LEFT) != 0) {
 				newBlankIndex = BLANK_INDEX-1;
 				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
 				swap(successor, BLANK_INDEX, newBlankIndex);
-				successors.add(new Node(successor, newBlankIndex, this, COST));
+				successors.add(new Node(successor, newBlankIndex, this, Integer.MAX_VALUE));
 			}
 
 
@@ -390,7 +392,7 @@ public class Main {
 				newBlankIndex = BLANK_INDEX+1;
 				successor = Arrays.copyOf(PUZZLE, PUZZLE.length);
 				swap(successor, BLANK_INDEX, newBlankIndex);
-				successors.add(new Node(successor, newBlankIndex, this, COST));
+				successors.add(new Node(successor, newBlankIndex, this, Integer.MAX_VALUE));
 			}
 
 			return successors;
