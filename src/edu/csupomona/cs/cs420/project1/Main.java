@@ -252,7 +252,7 @@ public class Main {
 	private static Result search(byte[] puzzle, Heuristic h) {
 		Set<Node> explored = new HashSet<>();
 		PriorityQueue<Node> frontier = new PriorityQueue<>((n1, n2) -> {
-			return (n1.COST) - (n2.COST);
+			return n1.COST - n2.COST;
 		});
 
 		Node n;
