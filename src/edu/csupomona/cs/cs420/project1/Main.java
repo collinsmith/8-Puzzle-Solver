@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
  * displaying the steps, or solve a specified number of randomly generated
  * 8-puzzle problems and output the results.
  *
- * @author Collin Smith <collinsmith@csupomona.edu>
+ * @author Collin Smith -- collinsmith@csupomona.edu
  */
 public class Main {
 	/**
@@ -229,7 +229,6 @@ public class Main {
 	 * @return a randomly generated puzzle
 	 */
 	private static byte[] generateRandomPuzzle() {
-		int temp;
 		int randomIndex;
 		byte[] puzzle = copyGoal();
 		for (int i = 0; i < puzzle.length; i++) {
